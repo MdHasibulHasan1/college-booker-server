@@ -102,6 +102,46 @@ app.post("/profile/update/:email",async (req, res) => {
   }
 });
 
+// .post(`http://localhost:5000/candidates/${college._id}`, {
+  
+app.post('/candidates/:id', async (req, res) => {
+  const productId = req.params.id;
+  const newCandidate = req.body.data;
+  console.log(productId, newCandidate);
+// Find the product by ID and push the new comment and rating
+const result = await collegesCollection.findOneAndUpdate(
+      { _id: new ObjectId(productId) },
+      { $push: { candidate: newCandidate } },
+      { returnOriginal: false },
+    );
+    res.send(result);
+});
+
+// GET my colleges by candidateEmail
+app.get('/my-colleges/:candidateEmail', async (req, res) => {
+  const candidateEmail = req.params.candidateEmail;
+  try {
+    // Find colleges that have the provided candidateEmail in their 'candidate' array
+    const result = await collegesCollection.find({ "candidate.candidateEmail": candidateEmail }).toArray();
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Internal Server Error');
+  }
+});
+// comment  APIs
+app.post('/college/review/:id', async (req, res) => {
+  const collegeId = req.params.id;
+  const newReview = req.body.newReview;
+// Find the product by ID and push the new comment and rating
+const result = await collegesCollection.findOneAndUpdate(
+      { _id: new ObjectId(collegeId) },
+      { $push: { reviews: newReview } },
+      { returnOriginal: false },
+    );
+    res.send(result);
+});
+
     // jwt
     app.post('/jwt', (req, res) => {
       const user = req.body;
