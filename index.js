@@ -42,7 +42,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     
     const usersCollection = client.db('college-booker').collection('users')
     const collegesCollection = client.db('college-booker').collection('colleges')
@@ -86,15 +86,17 @@ async function run() {
       }
     });
     
-app.post("/profile/update/:email",async (req, res) => {
-  const { email } = req.params;
-   console.log(email);
-  const { name, photoURL, phoneNumber, address, gender } = req.body;
+app.post("/profile/update/:Id",async (req, res) => {
+  const {Id} = req.params;
+  console.log(Id);
+  const { name, photoURL, phoneNumber, address, gender, email, university  } = req.body;
+  console.log(req.body);
   try {
     const result=await usersCollection.updateOne(
-      { email },
-      { $set: { name, photoURL, phoneNumber, address, gender } }
+      { _id: new ObjectId(Id) },
+      { $set: { name, photoURL, phoneNumber, address, gender, email, university } }
     );
+    console.log(result);
     res.send(result)
   } catch (error) {
     console.error("Error updating user profile:", error);
@@ -102,22 +104,38 @@ app.post("/profile/update/:email",async (req, res) => {
   }
 });
 
-// .post(`http://localhost:5000/candidates/${college._id}`, {
-  
+
+
 app.post('/candidates/:id', async (req, res) => {
-  const productId = req.params.id;
-  const newCandidate = req.body.data;
-  console.log(productId, newCandidate);
-// Find the product by ID and push the new comment and rating
-const result = await collegesCollection.findOneAndUpdate(
-      { _id: new ObjectId(productId) },
+  try {
+    const collegeId = req.params.id;
+    const newCandidate = req.body.data;
+
+    if (!newCandidate || typeof newCandidate !== 'object') {
+      return res.status(400).json({ error: 'Invalid candidate data.' });
+    }
+
+    // Find the product by ID and push the new comment and rating
+    const result = await collegesCollection.findOneAndUpdate(
+      { _id: new ObjectId(collegeId) },
       { $push: { candidate: newCandidate } },
-      { returnOriginal: false },
+      { returnOriginal: false }
     );
+
+  
+    if (!result.value) {
+      return res.status(404).json({ error: 'College not found.' });
+    }
+
     res.send(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error.' });
+  }
 });
 
-// GET my colleges by candidateEmail
+
+// Route to get all "my colleges" for a specific candidateEmail
 app.get('/my-colleges/:candidateEmail', async (req, res) => {
   const candidateEmail = req.params.candidateEmail;
   try {
@@ -129,18 +147,40 @@ app.get('/my-colleges/:candidateEmail', async (req, res) => {
     res.status(500).send('Internal Server Error');
   }
 });
-// comment  APIs
 app.post('/college/review/:id', async (req, res) => {
   const collegeId = req.params.id;
   const newReview = req.body.newReview;
-// Find the product by ID and push the new comment and rating
-const result = await collegesCollection.findOneAndUpdate(
+
+  try {
+    const college = await collegesCollection.findOne({ _id: new ObjectId(collegeId) });
+
+    if (!college) {
+      return res.status(404).send('College not found');
+    }
+    if (!college.reviews) {
+      college.reviews = [];
+    }
+    const existingReviewIndex = college.reviews.findIndex(review => review.candidateEmail === newReview.candidateEmail);
+
+    if (existingReviewIndex !== -1) {
+      college.reviews.splice(existingReviewIndex, 1, newReview);
+    } else {
+      college.reviews.push(newReview);
+    }
+    // Update the college document with the updated reviews
+    const result = await collegesCollection.findOneAndUpdate(
       { _id: new ObjectId(collegeId) },
-      { $push: { reviews: newReview } },
+      { $set: { reviews: college.reviews } },
       { returnOriginal: false },
     );
+
     res.send(result);
+  } catch (error) {
+    console.error('Error updating reviews:', error);
+    res.status(500).send('Error updating reviews');
+  }
 });
+
 
     // jwt
     app.post('/jwt', (req, res) => {
@@ -151,8 +191,22 @@ const result = await collegesCollection.findOneAndUpdate(
       res.send({ token })
     })
 
+    app.get("/search-colleges/:searchQuery", async (req, res) => {
+      const searchQuery = req.params.searchQuery.toLowerCase();
+      try {
+      
     
-
+        // Filter the colleges based on the search query using MongoDB's find method
+        const searchResults = await collegesCollection
+          .find({ name: { $regex: new RegExp(searchQuery, "i") } })
+          .toArray();
+    
+        res.json(searchResults);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Server error" });
+      }
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
