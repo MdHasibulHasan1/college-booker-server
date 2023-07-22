@@ -13,6 +13,22 @@ app.use(cors());
 app.use(express.json());
 
 
+const verifyJWT = (req, res, next) => {
+  const authorization = req.headers.authorization;
+  if (!authorization) {
+    return res.status(401).send({ error: true, message: 'unauthorized access' });
+  }
+  // bearer token
+  const token = authorization.split(' ')[1];
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ error: true, message: 'unauthorized access' })
+    }
+    req.decoded = decoded;
+    next();
+  })
+}
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.itpj9d6.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -33,6 +49,11 @@ async function run() {
 
 
     
+    // users related apis
+    app.get('/users', async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
     app.post('/users', async (req, res) => {
       const user = req.body;
       console.log(req.body);
@@ -46,8 +67,51 @@ async function run() {
       const result = await usersCollection.insertOne(user);
       res.send(result);
     });
-    
+    app.get('/colleges', async (req, res) => {
+      const result = await collegesCollection.find().toArray();
+      res.send(result);
+    });
 
+    app.get("/profile/update/:email", async (req, res) => {
+      const { email } = req.params;
+      try {
+        const userProfile = await usersCollection.findOne({ email });
+        if (!userProfile) {
+          return res.status(404).json({ message: "User profile not found" });
+        }
+        res.json(userProfile);
+      } catch (error) {
+        console.error("Error retrieving user profile:", error);
+        res.status(500).json({ message: "An error occurred while retrieving user profile" });
+      }
+    });
+    
+app.post("/profile/update/:email",async (req, res) => {
+  const { email } = req.params;
+   console.log(email);
+  const { name, photoURL, phoneNumber, address, gender } = req.body;
+  try {
+    const result=await usersCollection.updateOne(
+      { email },
+      { $set: { name, photoURL, phoneNumber, address, gender } }
+    );
+    res.send(result)
+  } catch (error) {
+    console.error("Error updating user profile:", error);
+    res.status(500).json({ message: "An error occurred while updating user profile" });
+  }
+});
+
+    // jwt
+    app.post('/jwt', (req, res) => {
+      const user = req.body;
+      console.log(user);
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+      console.log(token)
+      res.send({ token })
+    })
+
+    
 
 
     // Send a ping to confirm a successful connection
