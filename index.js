@@ -44,7 +44,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    // await client.connect();
+   
     const usersCollection = client.db('college-booker').collection('users')
     const collegesCollection = client.db('college-booker').collection('colleges')
  
@@ -110,20 +110,12 @@ app.post('/candidates/:id', async (req, res) => {
   
     const collegeId = req.params.id;
     const newCandidate = req.body.data;
-
-    // if (!newCandidate || typeof newCandidate !== 'object') {
-    //   return res.status(400).json({ error: 'Invalid candidate data.' });
-    // }
-
     const query = await collegesCollection.findOne({ _id: new ObjectId(collegeId) });
-   
-    console.log(collegeId, query);
     const result = await collegesCollection.findOneAndUpdate(
       { _id: new ObjectId(collegeId) },
       { $push: { candidate: newCandidate } },
       { returnOriginal: false },
     );
-console.log(result);
     res.send(result);
 });
  
@@ -204,8 +196,8 @@ app.post('/college/review/:id', async (req, res) => {
     
 // Products route with pagination
 app.get('/all-colleges', async (req, res) => {
-  const pageNumber = parseInt(req.query.pageNumber) || 1;    // Current page number
-  const limit = parseInt(req.query.limit) || 3;       // Number of products per page
+  const pageNumber = parseInt(req.query.pageNumber) || 1;    
+  const limit = parseInt(req.query.limit) || 3;      
   const skip = (pageNumber - 1) * limit;
   const totalCount = await collegesCollection.countDocuments();
   const totalPages = Math.ceil(totalCount / limit);
@@ -227,7 +219,7 @@ app.get('/all-colleges', async (req, res) => {
     )
   } finally {
     // Ensures that the client will close when you finish/error
-    // await client.close();
+  
   }
 }
 run().catch(console.dir)
