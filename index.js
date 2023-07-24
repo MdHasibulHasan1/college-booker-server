@@ -90,12 +90,12 @@ async function run() {
 app.post("/profile/update/:Id",async (req, res) => {
   const {Id} = req.params;
   console.log(Id);
-  const { name, photoURL, phoneNumber, address, gender, email, university  } = req.body;
+  const { name, photoURL, phoneNumber, address, gender, university  } = req.body;
   console.log(req.body);
   try {
     const result=await usersCollection.updateOne(
       { _id: new ObjectId(Id) },
-      { $set: { name, photoURL, phoneNumber, address, gender, email, university } }
+      { $set: { name, photoURL, phoneNumber, address, gender, university } }
     );
     console.log(result);
     res.send(result)
